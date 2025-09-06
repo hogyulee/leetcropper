@@ -1,46 +1,789 @@
-<!doctype html>
-
-<html>
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <title>HTML Example</title>
-  
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/about.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEET 시험지 처리 도구</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .tab-container {
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .tab.active {
+            background: white;
+            border-bottom: 2px solid white;
+            margin-bottom: -2px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .file-upload {
+            border: 2px dashed #ddd;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .file-upload:hover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        
+        .file-upload input {
+            display: none;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        input, button, select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .pdf-viewer {
+            position: relative;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+            min-height: 600px;
+            background: #f9f9f9;
+        }
+        
+        .pdf-canvas {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+        
+        .crop-overlay {
+            position: absolute;
+            border: 2px solid #007bff;
+            background: rgba(0,123,255,0.1);
+            min-width: 20px;
+            min-height: 20px;
+            z-index: 10;
+        }
+        
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #007bff;
+            border: 1px solid white;
+        }
+        
+        .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .preview-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            border-radius: 4px;
+        }
+        
+        .preview-item img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 5px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .image-upload-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .image-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .image-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .image-item img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <section class="center">
-    <aside class="sidebar"></aside>
-    
-    <section class="contents">
-      <!-- page will be include here -->
-      <section id="page" class="page">
-        <section id="about">
-          <section class="frame">
-            <h2><b>HELLO</b>WORLD</h2>
+    <div class="container">
+        <h1>LEET 시험지 처리 도구</h1>
+        
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('pdf-to-images')">PDF → 이미지</div>
+            <div class="tab" onclick="switchTab('images-to-pdf')">이미지 → PDF</div>
+        </div>
+        
+        <!-- PDF to Images Tab -->
+        <div id="pdf-to-images" class="tab-content active">
+            <div class="file-upload" onclick="document.getElementById('pdfInput').click()">
+                <input type="file" id="pdfInput" accept=".pdf" onchange="loadPDF(this)">
+                <p>PDF 파일을 선택하거나 드래그하여 업로드하세요</p>
+            </div>
+            <div class="controls" id="pdfFilenameControls" style="display: none;">
+                <div class="control-group">
+                    <label for="pdfImageBaseName">이미지 파일명:</label>
+                    <input type="text" id="pdfImageBaseName" value="question">
+                </div>
+            </div>
+            <div id="pdfControls" class="controls" style="display: none;">
+                <div class="control-group">
+                    <label>시작 페이지:</label>
+                    <input type="number" id="startPage" value="1" min="1">
+                </div>
+                <div class="control-group">
+                    <label>종료 페이지:</label>
+                    <input type="number" id="endPage" value="1" min="1">
+                </div>
+                <button onclick="prevPage()" id="prevBtn">이전 페이지</button>
+                <span id="pageInfo">1 / 1</span>
+                <button onclick="nextPage()" id="nextBtn">다음 페이지</button>
+                <button onclick="resetCrop()">크롭 전체 초기화</button>
+                <button onclick="processPDF()" id="processBtn">이미지 생성</button>
+            </div>
             
-            <div class="cat">
-              <div class="picture">
-                <img src="images/mew.png" alt="Mew">
-              </div>
-              <small>Mew</small>
+            <div id="pdfViewer" class="pdf-viewer" style="display: none;">
+                <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
+                <div id="cropOverlays"></div>
             </div>
-            <div class="cat">
-              <div class="picture">
-                <img src="images/siesta.png" alt="Siesta">
-              </div>
-              <small>Siesta</small>
+            
+            <div id="progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p id="progressText">처리 중...</p>
             </div>
-            <div class="cat">
-              <div class="picture">
-                <img src="images/tiger.png" alt="Tiger">
-              </div>
-              <small>Tiger</small>
+            
+            <div id="results" class="preview-grid"></div>
+            <div id="pdfError" class="error"></div>
+        </div>
+        
+        <!-- Images to PDF Tab -->
+        <div id="images-to-pdf" class="tab-content">
+            <div class="image-upload-area">
+                <div>
+                    <h3>배경 이미지</h3>
+                    <div class="file-upload" onclick="document.getElementById('backgroundInput').click()">
+                        <input type="file" id="backgroundInput" accept="image/*" onchange="loadBackground(this)">
+                        <p>배경 이미지 선택</p>
+                    </div>
+                    <div id="backgroundPreview"></div>
+                </div>
+                
+                <div>
+                    <h3>문제 이미지들</h3>
+                    <div class="file-upload" onclick="document.getElementById('questionsInput').click()">
+                        <input type="file" id="questionsInput" accept="image/*" multiple onchange="loadQuestions(this)">
+                        <p>문제 이미지들 선택 (다중 선택 가능)</p>
+                    </div>
+                    <div id="questionsList" class="image-list"></div>
+                </div>
             </div>
-          </section>
-        </section>
-      </section>
-    </section>
-  </section>
+            
+            <div class="controls">
+                <!-- PDF 파일명 입력 추가 -->
+                <div class="control-group">
+                    <label for="pdfOutputName">PDF 파일명:</label>
+                    <input type="text" id="pdfOutputName" value="test_questions">
+                </div>
+                <button onclick="generatePDF()" id="generateBtn">PDF 생성</button>
+                <button onclick="downloadPDF()" id="downloadBtn" style="display: none;">PDF 다운로드</button>
+            </div>
+            
+            <div id="pdfProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="pdfProgressFill"></div>
+                </div>
+                <p id="pdfProgressText">PDF 생성 중...</p>
+            </div>
+            
+            <div id="pdfError2" class="error"></div>
+            <div id="pdfSuccess" class="success"></div>
+        </div>
+    </div>
+
+    <script>
+        // PDF.js 설정
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        
+        let pdfDoc = null;
+        let currentPage = 1;
+        let canvas = null;
+        let ctx = null;
+        let cropAreas = []; // [{ x, y, width, height }]
+        let isSelectingCrop = false;
+        let cropStart = null;
+        let backgroundImage = null;
+        let questionImages = []; // [{ name, dataUrl }]
+        let generatedPDF = null;
+        
+        // 상수 정의
+        const CROP_TOP_PT = 103;
+        const CROP_LEFT_PT = 55;
+        const CROP_RIGHT_PT = 55;
+        const A4_WIDTH_PT = 595;
+        const A4_HEIGHT_PT = 842;
+        const LINE_ERASER = 2;
+        const CROPPED_ODD_WIDTH = A4_WIDTH_PT/2 - CROP_LEFT_PT - LINE_ERASER;
+        const CROPPED_EVEN_WIDTH = A4_WIDTH_PT/2 - CROP_RIGHT_PT - LINE_ERASER;
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        async function loadPDF(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                document.getElementById('endPage').value = pdfDoc.numPages;
+                document.getElementById('endPage').max = pdfDoc.numPages;
+                document.getElementById('startPage').max = pdfDoc.numPages;
+                
+                currentPage = 1;
+                canvas = document.getElementById('pdfCanvas');
+                ctx = canvas.getContext('2d');
+                
+                await renderPage(currentPage);
+                initializeCrop();
+                
+                document.getElementById('pdfControls').style.display = 'flex';
+                document.getElementById('pdfViewer').style.display = 'block';
+                document.getElementById('pdfError').textContent = '';
+                document.getElementById('pdfFilenameControls').style.display = 'flex';
+                
+            } catch (error) {
+                document.getElementById('pdfError').textContent = 'PDF 로드 실패: ' + error.message;
+            }
+        }
+        
+        async function renderPage(pageNum) {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 1.5 });
+            
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            await page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            }).promise;
+            
+            document.getElementById('pageInfo').textContent = `${pageNum} / ${pdfDoc.numPages}`;
+            updateCropOverlays();
+        }
+        
+        function initializeCrop() {
+            cropAreas = [];
+            updateCropOverlays();
+            setupCaptureCropHandlers();
+        }
+
+        function setupCaptureCropHandlers() {
+            const pdfViewer = document.getElementById('pdfViewer');
+            pdfViewer.onmousedown = function(e) {
+                const rect = pdfViewer.getBoundingClientRect();
+                isSelectingCrop = true;
+                cropStart = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                cropAreas.push({ x: cropStart.x, y: cropStart.y, width: 0, height: 0 });
+                updateCropOverlays();
+            };
+
+            pdfViewer.onmousemove = function(e) {
+                if (!isSelectingCrop || cropStart == null) return;
+                const rect = pdfViewer.getBoundingClientRect();
+                const currX = e.clientX - rect.left;
+                const currY = e.clientY - rect.top;
+                const lastIdx = cropAreas.length - 1;
+                cropAreas[lastIdx] = {
+                    x: Math.min(cropStart.x, currX),
+                    y: Math.min(cropStart.y, currY),
+                    width: Math.abs(currX - cropStart.x),
+                    height: Math.abs(currY - cropStart.y)
+                };
+                updateCropOverlays();
+            };
+
+            pdfViewer.onmouseup = function(e) {
+                if (!isSelectingCrop || cropStart == null) return;
+                isSelectingCrop = false;
+                cropStart = null;
+                updateCropOverlays();
+            };
+        }
+
+        function updateCropOverlays() {
+            const overlays = document.getElementById('cropOverlays');
+            overlays.innerHTML = '';
+            cropAreas.forEach((area, idx) => {
+                if (!area || area.width < 5 || area.height < 5) return;
+                const overlay = document.createElement('div');
+                overlay.className = 'crop-overlay';
+                overlay.style.left = area.x + 'px';
+                overlay.style.top = area.y + 'px';
+                overlay.style.width = area.width + 'px';
+                overlay.style.height = area.height + 'px';
+                overlay.style.position = 'absolute';
+                overlay.style.zIndex = 10;
+                overlay.style.pointerEvents = 'auto'; // allow interaction
+
+                // 삭제 버튼 생성 및 이벤트 등록
+                const delBtn = document.createElement('button');
+                delBtn.textContent = '삭제';
+                delBtn.style.position = 'absolute';
+                delBtn.style.top = '-22px';
+                delBtn.style.right = '0';
+                delBtn.style.zIndex = 11;
+                delBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    deleteCropArea(idx);
+                };
+                overlay.appendChild(delBtn);
+
+                // overlay 내에서 마우스 다운 시 crop 선택 방지
+                overlay.onmousedown = function(e) {
+                    e.stopPropagation();
+                };
+
+                overlays.appendChild(overlay);
+            });
+        }
+        
+        window.deleteCropArea = function(idx) {
+            cropAreas.splice(idx, 1);
+            updateCropOverlays();
+        }
+        
+        async function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                await renderPage(currentPage);
+            }
+        }
+        
+        async function nextPage() {
+            if (currentPage < pdfDoc.numPages) {
+                currentPage++;
+                await renderPage(currentPage);
+            }
+        }
+        
+        function resetCrop() {
+            initializeCrop();
+        }
+        
+        async function processPDF() {
+            if (!pdfDoc) return;
+            const startPage = parseInt(document.getElementById('startPage').value);
+            const endPage = parseInt(document.getElementById('endPage').value);
+            const baseName = document.getElementById('pdfImageBaseName').value || 'question';
+
+            document.getElementById('progress').style.display = 'block';
+            document.getElementById('processBtn').disabled = true;
+
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+
+            const images = [];
+            let imageSeq = 1; // sequential numbering
+
+            const totalPages = endPage - startPage + 1;
+
+            try {
+                for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                    const progress = ((pageNum - startPage) / totalPages) * 100;
+                    document.getElementById('progressFill').style.width = progress + '%';
+                    document.getElementById('progressText').textContent = `페이지 ${pageNum} 처리 중...`;
+
+                    const page = await pdfDoc.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 2 });
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = viewport.width;
+                    tempCanvas.height = viewport.height;
+                    
+                    await page.render({
+                        canvasContext: tempCtx,
+                        viewport: viewport
+                    }).promise;
+                    
+                    const canvasRect = canvas.getBoundingClientRect();
+                    cropAreas.forEach((area) => {
+                        if (!area || area.width < 5 || area.height < 5) return;
+                        const scaleX = viewport.width / canvasRect.width;
+                        const scaleY = viewport.height / canvasRect.height;
+                        const cropX = area.x * scaleX;
+                        const cropY = area.y * scaleY;
+                        const cropWidth = area.width * scaleX;
+                        const cropHeight = area.height * scaleY;
+
+                        const croppedCanvas = document.createElement('canvas');
+                        const croppedCtx = croppedCanvas.getContext('2d');
+                        croppedCanvas.width = cropWidth;
+                        croppedCanvas.height = cropHeight;
+
+                        croppedCtx.drawImage(
+                            tempCanvas,
+                            cropX, cropY, cropWidth, cropHeight,
+                            0, 0, cropWidth, cropHeight
+                        );
+
+                        const imageData = croppedCanvas.toDataURL('image/png');
+                        images.push(imageData);
+
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'preview-item';
+                        previewItem.innerHTML = `
+                            <img src="${imageData}" alt="${baseName}_${imageSeq}">
+                            <p>${baseName}_${imageSeq}</p>
+                        `;
+                        results.appendChild(previewItem);
+                        imageSeq++;
+                    });
+                }
+
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('progressText').textContent = '완료!';
+
+                const downloadAllBtn = document.createElement('button');
+                downloadAllBtn.textContent = '모든 이미지 다운로드';
+                downloadAllBtn.onclick = () => downloadAllImages(images, baseName);
+                results.appendChild(downloadAllBtn);
+
+            } catch (error) {
+                document.getElementById('pdfError').textContent = '처리 실패: ' + error.message;
+            }
+
+            document.getElementById('processBtn').disabled = false;
+            setTimeout(() => {
+                document.getElementById('progress').style.display = 'none';
+            }, 2000);
+        }
+
+        // ZIP 다운로드로 변경
+        async function downloadAllImages(images, baseName = 'question') {
+            const zip = new JSZip();
+            images.forEach((imageData, index) => {
+                // base64 데이터에서 실제 데이터 추출
+                const base64 = imageData.split(',')[1];
+                zip.file(`${baseName}_${index + 1}.png`, base64, {base64: true});
+            });
+            const content = await zip.generateAsync({type: "blob"});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `${baseName}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function loadBackground(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                backgroundImage = e.target.result;
+                document.getElementById('backgroundPreview').innerHTML = `
+                    <img src="${backgroundImage}" style="max-width: 200px; max-height: 150px;" alt="배경">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function loadQuestions(input) {
+            questionImages = [];
+            const files = Array.from(input.files);
+            const list = document.getElementById('questionsList');
+            list.innerHTML = '';
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    questionImages.push({ name: file.name, dataUrl: e.target.result });
+                    renderQuestionsList();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderQuestionsList() {
+            const list = document.getElementById('questionsList');
+            list.innerHTML = '';
+            questionImages.forEach((img, idx) => {
+                const item = document.createElement('div');
+                item.className = 'image-item';
+                item.innerHTML = `
+                    <img src="${img.dataUrl}" alt="문제 ${idx + 1}">
+                    <span>${img.name}</span>
+                    <button style="padding:2px 6px;" onclick="moveQuestion(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                    <button style="padding:2px 6px;" onclick="moveQuestion(${idx}, 1)" ${idx === questionImages.length - 1 ? 'disabled' : ''}>▼</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        window.moveQuestion = function(idx, dir) {
+            const newIdx = idx + dir;
+            if (newIdx < 0 || newIdx >= questionImages.length) return;
+            // Swap
+            [questionImages[idx], questionImages[newIdx]] = [questionImages[newIdx], questionImages[idx]];
+            renderQuestionsList();
+        }
+        
+        async function generatePDF() {
+            if (!backgroundImage || questionImages.length === 0) {
+                document.getElementById('pdfError2').textContent = '배경 이미지와 문제 이미지를 모두 업로드해주세요.';
+                return;
+            }
+            
+            document.getElementById('pdfProgress').style.display = 'block';
+            document.getElementById('generateBtn').disabled = true;
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'pt', 'a4');
+                
+                const totalPages = Math.ceil(questionImages.length / 2);
+                
+                for (let i = 0; i < questionImages.length; i += 2) {
+                    const progress = ((i / 2) / totalPages) * 100;
+                    document.getElementById('pdfProgressFill').style.width = progress + '%';
+                    document.getElementById('pdfProgressText').textContent = `페이지 ${Math.floor(i / 2) + 1} 생성 중...`;
+                    
+                    if (i > 0) {
+                        pdf.addPage();
+                    }
+                    
+                    // 배경 이미지 추가
+                    pdf.addImage(backgroundImage, 'PNG', 0, 0, A4_WIDTH_PT, A4_HEIGHT_PT);
+                    
+                    // 왼쪽 이미지 처리
+                    if (i < questionImages.length) {
+                        const leftImageObj = questionImages[i];
+                        const leftImage = leftImageObj.dataUrl;
+                        const isOdd = (i + 1) % 2 === 1;
+                        const leftWidth = isOdd ? CROPPED_ODD_WIDTH : CROPPED_EVEN_WIDTH;
+                        
+                        // 이미지 비율 계산을 위해 임시 이미지 객체 생성
+                        const tempImg = new Image();
+                        tempImg.src = leftImage;
+                        await new Promise(resolve => {
+                            tempImg.onload = resolve;
+                        });
+                        
+                        const aspectRatio = tempImg.height / tempImg.width;
+                        const leftHeight = leftWidth * aspectRatio;
+                        const leftXPos = CROP_LEFT_PT;
+                        const leftYPos = CROP_TOP_PT;
+                        
+                        pdf.addImage(leftImage, 'PNG', leftXPos, leftYPos, leftWidth, leftHeight);
+                        // 이미지 파일명 표시 (선택적으로 PDF에 텍스트로 추가하려면 아래 코드 사용)
+                        // pdf.text(leftImageObj.name, leftXPos, leftYPos - 5);
+                    }
+                    
+                    // 오른쪽 이미지 처리
+                    if (i + 1 < questionImages.length) {
+                        const rightImageObj = questionImages[i + 1];
+                        const rightImage = rightImageObj.dataUrl;
+                        const isOdd = (i + 2) % 2 === 1;
+                        const rightWidth = isOdd ? CROPPED_ODD_WIDTH : CROPPED_EVEN_WIDTH;
+                        
+                        const tempImg = new Image();
+                        tempImg.src = rightImage;
+                        await new Promise(resolve => {
+                            tempImg.onload = resolve;
+                        });
+                        
+                        const aspectRatio = tempImg.height / tempImg.width;
+                        const rightHeight = rightWidth * aspectRatio;
+                        const rightXPos = A4_WIDTH_PT / 2 + LINE_ERASER;
+                        const rightYPos = CROP_TOP_PT;
+                        
+                        pdf.addImage(rightImage, 'PNG', rightXPos, rightYPos, rightWidth, rightHeight);
+                        // pdf.text(rightImageObj.name, rightXPos, rightYPos - 5);
+                    }
+                }
+                
+                generatedPDF = pdf;
+                
+                document.getElementById('pdfProgressFill').style.width = '100%';
+                document.getElementById('pdfProgressText').textContent = 'PDF 생성 완료!';
+                document.getElementById('downloadBtn').style.display = 'inline-block';
+                document.getElementById('pdfSuccess').textContent = 'PDF가 성공적으로 생성되었습니다!';
+                document.getElementById('pdfError2').textContent = '';
+                
+            } catch (error) {
+                document.getElementById('pdfError2').textContent = 'PDF 생성 실패: ' + error.message;
+            }
+            
+            document.getElementById('generateBtn').disabled = false;
+            setTimeout(() => {
+                document.getElementById('pdfProgress').style.display = 'none';
+            }, 2000);
+        }
+        
+        function downloadPDF() {
+            if (generatedPDF) {
+                const name = document.getElementById('pdfOutputName')?.value || 'test_questions';
+                generatedPDF.save(name.endsWith('.pdf') ? name : name + '.pdf');
+            }
+        }
+        
+        // 드래그 앤 드롭 지원
+        document.querySelectorAll('.file-upload').forEach(area => {
+            area.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                area.style.backgroundColor = '#f0f8ff';
+            });
+            
+            area.addEventListener('dragleave', (e) => {
+                area.style.backgroundColor = '';
+            });
+            
+            area.addEventListener('drop', (e) => {
+                e.preventDefault();
+                area.style.backgroundColor = '';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const input = area.querySelector('input[type="file"]');
+                    input.files = files;
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+    </script>
 </body>
 </html>
